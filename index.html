@@ -8,22 +8,47 @@
       body {
         margin: 0;
         padding: 0;
-        font-family: sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
         display: flex;
         flex-direction: column;
         height: 100vh;
+        -webkit-tap-highlight-color: transparent;
       }
 
       #input-wrapper {
-        padding: 8px;
+        padding: 20px;
         background: #f4f4f4;
+        display: flex;
+        justify-content: center;
       }
 
-      input {
-        width: 100%;
-        padding: 10px;
-        font-size: 16px;
-        box-sizing: border-box;
+      #paste-button {
+        padding: 20px 40px;
+        background: #2196f3;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 20px;
+        transition: all 0.2s;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        min-width: 200px;
+        text-align: center;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+      }
+
+      #paste-button:active {
+        background: #1976d2;
+        transform: scale(0.98);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      }
+
+      #paste-button:hover {
+        background: #1976d2;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
       }
 
       iframe {
@@ -31,15 +56,19 @@
         width: 100%;
         border: none;
       }
+
+      @media (max-width: 600px) {
+        #paste-button {
+          padding: 24px 48px;
+          font-size: 24px;
+          min-width: 240px;
+        }
+      }
     </style>
   </head>
   <body>
     <div id="input-wrapper">
-      <input
-        id="youtube-url"
-        type="text"
-        placeholder="Paste YouTube URL and press Enter"
-      />
+      <button id="paste-button">Tap to Paste YouTube URL</button>
     </div>
     <iframe
       id="player"
@@ -48,8 +77,8 @@
     ></iframe>
 
     <script>
-      const input = document.getElementById("youtube-url");
       const player = document.getElementById("player");
+      const pasteButton = document.getElementById("paste-button");
 
       function extractVideoId(url) {
         try {
@@ -63,16 +92,59 @@
         return null;
       }
 
-      input.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") {
-          const videoId = extractVideoId(input.value.trim());
-          if (videoId) {
-            const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&modestbranding=1&rel=0`;
-            player.src = embedUrl;
-          } else {
-            alert("Invalid YouTube URL");
+      function playVideo(url) {
+        const videoId = extractVideoId(url);
+        if (videoId) {
+          const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&modestbranding=1&rel=0`;
+          player.src = embedUrl;
+        } else {
+          alert(
+            "Invalid YouTube URL. Please make sure you've copied a valid YouTube link."
+          );
+        }
+      }
+
+      async function handlePaste() {
+        try {
+          // Try the modern Clipboard API first
+          const text = await navigator.clipboard.readText();
+          playVideo(text);
+        } catch (err) {
+          // Fallback for mobile browsers
+          try {
+            // Create a temporary input element
+            const tempInput = document.createElement("input");
+            tempInput.style.position = "fixed";
+            tempInput.style.opacity = 0;
+            document.body.appendChild(tempInput);
+
+            // Focus and paste
+            tempInput.focus();
+            const success = document.execCommand("paste");
+
+            if (success && tempInput.value) {
+              playVideo(tempInput.value);
+            } else {
+              alert(
+                "Couldn't access clipboard. Please try copying the URL again."
+              );
+            }
+
+            // Clean up
+            document.body.removeChild(tempInput);
+          } catch (fallbackErr) {
+            alert(
+              "Please make sure you've copied a YouTube URL and try again."
+            );
           }
         }
+      }
+
+      // Handle both click and touch events
+      pasteButton.addEventListener("click", handlePaste);
+      pasteButton.addEventListener("touchend", (e) => {
+        e.preventDefault(); // Prevent double-tap zoom
+        handlePaste();
       });
     </script>
   </body>
