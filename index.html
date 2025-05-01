@@ -64,6 +64,29 @@
           min-width: 240px;
         }
       }
+
+      h1 {
+        margin: 20px;
+        color: #333;
+        font-size: 24px;
+      }
+
+      ol {
+        margin: 0 20px 20px;
+        padding-left: 20px;
+        color: #555;
+        line-height: 1.6;
+      }
+
+      ol li {
+        margin-bottom: 12px;
+        padding-left: 8px;
+      }
+
+      ol li::marker {
+        color: #2196f3;
+        font-weight: bold;
+      }
     </style>
   </head>
   <body>
@@ -75,6 +98,18 @@
       allowfullscreen
       allow="autoplay; encrypted-media"
     ></iframe>
+
+    <h1>Instructions</h1>
+    <ol>
+      <li>Tap the button to paste a YouTube URL.</li>
+      <li>The video will play automatically.</li>
+      <li>When playing (mobile), minimize the video or change tab.s</li>
+      <li>
+        The video will pause, but you can use the media dropdown to play it
+        again. Then, you can turn the screen off to get around youtube's screen
+        lock.
+      </li>
+    </ol>
 
     <script>
       const player = document.getElementById("player");
