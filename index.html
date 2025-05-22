@@ -112,6 +112,12 @@
       let ytPlayer = null;
       let pendingVideoId = null;
 
+      // Initialize player immediately with a placeholder video
+      function initializePlayer() {
+        const placeholderVideoId = "dQw4w9WgXcQ"; // A popular video that's likely to work
+        playerEl.src = buildEmbedUrl(placeholderVideoId);
+      }
+
       function extractVideoId(url) {
         try {
           const parsed = new URL(url);
@@ -129,7 +135,8 @@
           `https://www.youtube.com/embed/${id}` +
           `?autoplay=1&playsinline=1&modestbranding=1&rel=0` +
           `&origin=${encodeURIComponent(location.origin)}` +
-          `&enablejsapi=1`
+          `&enablejsapi=1` +
+          `&host=${encodeURIComponent("https://www.youtube.com")}`
         );
       }
 
@@ -156,7 +163,6 @@
         if (ytPlayer) {
           ytPlayer.loadVideoById(videoId);
         } else {
-          // If player isn't ready yet, store the video ID and initialize player
           pendingVideoId = videoId;
           playerEl.src = buildEmbedUrl(videoId);
         }
@@ -169,6 +175,9 @@
         handlePaste();
       });
 
+      // Initialize player as soon as possible
+      initializePlayer();
+
       // 2) Called by the IFrame API once its script loads:
       function onYouTubeIframeAPIReady() {
         ytPlayer = new YT.Player("player", {
@@ -178,11 +187,18 @@
             modestbranding: 1,
             rel: 0,
             origin: location.origin,
+            host: "https://www.youtube.com",
           },
           events: {
             onReady: onPlayerReady,
             onStateChange: onPlayerStateChange,
-            onError: (e) => console.error("YouTube Player Error", e),
+            onError: (e) => {
+              console.error("YouTube Player Error", e);
+              // If there's an error, try reinitializing the player
+              if (e.data === 150 || e.data === 101) {
+                initializePlayer();
+              }
+            },
           },
         });
       }
