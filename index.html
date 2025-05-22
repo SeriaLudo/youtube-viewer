@@ -5,24 +5,77 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>YouTube Minimal Player (Logged-In)</title>
     <style>
-      body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-             display: flex; flex-direction: column; height: 100vh; -webkit-tap-highlight-color: transparent; }
-      #input-wrapper { padding: 20px; background: #f4f4f4; display: flex; justify-content: center; }
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #input-wrapper {
+        padding: 20px;
+        background: #f4f4f4;
+        display: flex;
+        justify-content: center;
+      }
       #paste-button {
-        padding: 20px 40px; background: #2196f3; color: white; border: none; border-radius: 12px;
-        cursor: pointer; font-size: 20px; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        min-width: 200px; text-align: center; touch-action: manipulation;
+        padding: 20px 40px;
+        background: #2196f3;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 20px;
+        transition: all 0.2s;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        min-width: 200px;
+        text-align: center;
+        touch-action: manipulation;
       }
-      #paste-button:active { background: #1976d2; transform: scale(0.98); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-      #paste-button:hover  { background: #1976d2; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
-      iframe { flex: 1; width: 100%; border: none; }
+      #paste-button:active {
+        background: #1976d2;
+        transform: scale(0.98);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      }
+      #paste-button:hover {
+        background: #1976d2;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      }
+      iframe {
+        flex: 1;
+        width: 100%;
+        border: none;
+      }
       @media (max-width: 600px) {
-        #paste-button { padding: 24px 48px; font-size: 24px; min-width: 240px; }
+        #paste-button {
+          padding: 24px 48px;
+          font-size: 24px;
+          min-width: 240px;
+        }
       }
-      h1 { margin: 20px; color: #333; font-size: 24px; }
-      ol { margin: 0 20px 20px; padding-left: 20px; color: #555; line-height: 1.6; }
-      ol li { margin-bottom: 12px; padding-left: 8px; }
-      ol li::marker { color: #2196f3; font-weight: bold; }
+      h1 {
+        margin: 20px;
+        color: #333;
+        font-size: 24px;
+      }
+      ol {
+        margin: 0 20px 20px;
+        padding-left: 20px;
+        color: #555;
+        line-height: 1.6;
+      }
+      ol li {
+        margin-bottom: 12px;
+        padding-left: 8px;
+      }
+      ol li::marker {
+        color: #2196f3;
+        font-weight: bold;
+      }
     </style>
   </head>
   <body>
@@ -40,17 +93,24 @@
       <li>Tap the button to paste a YouTube URL.</li>
       <li>The video will play automatically.</li>
       <li>Minimize the video or switch tabs on mobile to background it.</li>
-      <li>Use your OS media controls (or lock-screen controls) to resume playback.</li>
-      <li>If you’re signed in at youtube.com, age-restricted videos will play and your history will be recorded.</li>
+      <li>
+        Use your OS media controls (or lock-screen controls) to resume playback.
+      </li>
+      <li>
+        If you're signed in at youtube.com, age-restricted videos will play and
+        your history will be recorded (which might stop your algorithm thinking
+        you haven't watched it 🤞)
+      </li>
     </ol>
 
     <!-- 1) YouTube IFrame Player API -->
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-      const playerEl   = document.getElementById("player");
+      const playerEl = document.getElementById("player");
       const pasteButton = document.getElementById("paste-button");
-      let ytPlayer;
+      let ytPlayer = null;
+      let pendingVideoId = null;
 
       function extractVideoId(url) {
         try {
@@ -79,58 +139,70 @@
           text = await navigator.clipboard.readText();
         } catch {
           const tmp = document.createElement("input");
-          tmp.style.position = "fixed"; tmp.style.opacity = 0;
+          tmp.style.position = "fixed";
+          tmp.style.opacity = 0;
           document.body.appendChild(tmp);
           tmp.focus();
           document.execCommand("paste");
           text = tmp.value;
           document.body.removeChild(tmp);
         }
-        playVideo(text);
-      }
 
-      function playVideo(url) {
-        const vid = extractVideoId(url);
-        if (!vid) {
+        const videoId = extractVideoId(text);
+        if (!videoId) {
           return alert("Invalid YouTube URL. Copy a valid link and try again.");
         }
+
         if (ytPlayer) {
-          ytPlayer.loadVideoById(vid);
+          ytPlayer.loadVideoById(videoId);
         } else {
-          // First-time: just set src; the API will pick it up once ready.
-          playerEl.src = buildEmbedUrl(vid);
+          // If player isn't ready yet, store the video ID and initialize player
+          pendingVideoId = videoId;
+          playerEl.src = buildEmbedUrl(videoId);
         }
       }
 
       // Handle click/touch
       pasteButton.addEventListener("click", handlePaste);
-      pasteButton.addEventListener("touchend", e => { e.preventDefault(); handlePaste(); });
+      pasteButton.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        handlePaste();
+      });
 
       // 2) Called by the IFrame API once its script loads:
       function onYouTubeIframeAPIReady() {
         ytPlayer = new YT.Player("player", {
           playerVars: {
-            autoplay:     1,
-            playsinline:  1,
+            autoplay: 1,
+            playsinline: 1,
             modestbranding: 1,
-            rel:          0,
-            origin:       location.origin
+            rel: 0,
+            origin: location.origin,
           },
           events: {
+            onReady: onPlayerReady,
             onStateChange: onPlayerStateChange,
-            onError:       e => console.error("YouTube Player Error", e)
-          }
+            onError: (e) => console.error("YouTube Player Error", e),
+          },
         });
+      }
+
+      function onPlayerReady(event) {
+        // If we had a pending video ID, load it now
+        if (pendingVideoId) {
+          event.target.loadVideoById(pendingVideoId);
+          pendingVideoId = null;
+        }
       }
 
       // 3) Example event handler: logs play/pause; your normal account history will fire
       function onPlayerStateChange(event) {
         const states = {
           [YT.PlayerState.PLAYING]: "PLAYING",
-          [YT.PlayerState.PAUSED]:  "PAUSED",
-          [YT.PlayerState.ENDED]:   "ENDED"
+          [YT.PlayerState.PAUSED]: "PAUSED",
+          [YT.PlayerState.ENDED]: "ENDED",
         };
-        console.log("YouTube iframe state:", states[event.data]||event.data);
+        console.log("YouTube iframe state:", states[event.data] || event.data);
       }
     </script>
   </body>
