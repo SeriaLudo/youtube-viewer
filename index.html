@@ -3,7 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>YouTube Minimal Player (Logged-In)</title>
+    <meta
+      name="description"
+      content="Play YouTube videos with screen off or in background. Works on mobile devices to play YouTube videos while screen is locked or in picture-in-picture mode."
+    />
+    <meta
+      name="keywords"
+      content="youtube screen off, youtube background play, youtube mobile screen off, youtube picture in picture, youtube pip, youtube background, youtube lock screen, youtube minimize, youtube background play, youtube mobile screen off, youtube picture in picture, youtube pip, youtube background, youtube lock screen, youtube minimize, youtube premium workaround"
+    />
+    <meta name="author" content="YouTube Minimal Player" />
+    <meta
+      property="og:title"
+      content="YouTube Minimal Player - Play Videos with Screen Off"
+    />
+    <meta
+      property="og:description"
+      content="Play YouTube videos with screen off or in background. Works on mobile devices to play YouTube videos while screen is locked or in picture-in-picture mode."
+    />
+    <meta property="og:type" content="website" />
+    <title>YouTube Mobile Minimal Player</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <style>
       body {
         margin: 0;
@@ -15,12 +34,14 @@
         height: 100vh;
         -webkit-tap-highlight-color: transparent;
       }
+
       #input-wrapper {
         padding: 20px;
         background: #f4f4f4;
         display: flex;
         justify-content: center;
       }
+
       #paste-button {
         padding: 20px 40px;
         background: #2196f3;
@@ -33,23 +54,28 @@
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         min-width: 200px;
         text-align: center;
+        -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
       }
+
       #paste-button:active {
         background: #1976d2;
         transform: scale(0.98);
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
       }
+
       #paste-button:hover {
         background: #1976d2;
         transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
       }
+
       iframe {
         flex: 1;
         width: 100%;
         border: none;
       }
+
       @media (max-width: 600px) {
         #paste-button {
           padding: 24px 48px;
@@ -57,21 +83,25 @@
           min-width: 240px;
         }
       }
+
       h1 {
         margin: 20px;
         color: #333;
         font-size: 24px;
       }
+
       ol {
         margin: 0 20px 20px;
         padding-left: 20px;
         color: #555;
         line-height: 1.6;
       }
+
       ol li {
         margin-bottom: 12px;
         padding-left: 8px;
       }
+
       ol li::marker {
         color: #2196f3;
         font-weight: bold;
@@ -84,39 +114,30 @@
     </div>
     <iframe
       id="player"
-      allow="autoplay; encrypted-media"
       allowfullscreen
+      allow="autoplay; encrypted-media"
     ></iframe>
 
     <h1>Instructions</h1>
     <ol>
       <li>Tap the button to paste a YouTube URL.</li>
       <li>The video will play automatically.</li>
-      <li>Minimize the video or switch tabs on mobile to background it.</li>
+      <li>When playing (mobile), minimize the video or change tabs</li>
       <li>
-        Use your OS media controls (or lock-screen controls) to resume playback.
+        The video will pause, but you can use the media dropdown to play it
+        again. Then, you can turn the screen off to get around YouTube's screen
+        lock.
       </li>
       <li>
-        If you're signed in at youtube.com, age-restricted videos will play and
-        your history will be recorded (which might stop your algorithm thinking
-        you haven't watched it 🤞)
+        You can also go fullscreen and switch tabs to get picture-in-picture (a
+        small window that will show the video while you do other stuff on your
+        phone).
       </li>
     </ol>
 
-    <!-- 1) YouTube IFrame Player API -->
-    <script src="https://www.youtube.com/iframe_api"></script>
-
     <script>
-      const playerEl = document.getElementById("player");
+      const player = document.getElementById("player");
       const pasteButton = document.getElementById("paste-button");
-      let ytPlayer = null;
-      let pendingVideoId = null;
-
-      // Initialize player immediately with a placeholder video
-      function initializePlayer() {
-        const placeholderVideoId = "dQw4w9WgXcQ"; // A popular video that's likely to work
-        playerEl.src = buildEmbedUrl(placeholderVideoId);
-      }
 
       function extractVideoId(url) {
         try {
@@ -124,102 +145,66 @@
           if (parsed.hostname.includes("youtube.com")) {
             return parsed.searchParams.get("v");
           } else if (parsed.hostname === "youtu.be") {
-            return parsed.pathname.slice(1);
+            return parsed.pathname.substring(1);
           }
         } catch (e) {}
         return null;
       }
 
-      function buildEmbedUrl(id) {
-        return (
-          `https://www.youtube.com/embed/${id}` +
-          `?autoplay=1&playsinline=1&modestbranding=1&rel=0` +
-          `&origin=${encodeURIComponent(location.origin)}` +
-          `&enablejsapi=1` +
-          `&host=${encodeURIComponent("https://www.youtube.com")}`
-        );
+      function playVideo(url) {
+        const videoId = extractVideoId(url);
+        if (videoId) {
+          const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&modestbranding=1&rel=0`;
+          player.src = embedUrl;
+        } else {
+          alert(
+            "Invalid YouTube URL. Please make sure you've copied a valid YouTube link."
+          );
+        }
       }
 
       async function handlePaste() {
-        let text = "";
         try {
-          text = await navigator.clipboard.readText();
-        } catch {
-          const tmp = document.createElement("input");
-          tmp.style.position = "fixed";
-          tmp.style.opacity = 0;
-          document.body.appendChild(tmp);
-          tmp.focus();
-          document.execCommand("paste");
-          text = tmp.value;
-          document.body.removeChild(tmp);
-        }
+          // Try the modern Clipboard API first
+          const text = await navigator.clipboard.readText();
+          playVideo(text);
+        } catch (err) {
+          // Fallback for mobile browsers
+          try {
+            // Create a temporary input element
+            const tempInput = document.createElement("input");
+            tempInput.style.position = "fixed";
+            tempInput.style.opacity = 0;
+            document.body.appendChild(tempInput);
 
-        const videoId = extractVideoId(text);
-        if (!videoId) {
-          return alert("Invalid YouTube URL. Copy a valid link and try again.");
-        }
+            // Focus and paste
+            tempInput.focus();
+            const success = document.execCommand("paste");
 
-        if (ytPlayer) {
-          ytPlayer.loadVideoById(videoId);
-        } else {
-          pendingVideoId = videoId;
-          playerEl.src = buildEmbedUrl(videoId);
+            if (success && tempInput.value) {
+              playVideo(tempInput.value);
+            } else {
+              alert(
+                "Couldn't access clipboard. Please try copying the URL again."
+              );
+            }
+
+            // Clean up
+            document.body.removeChild(tempInput);
+          } catch (fallbackErr) {
+            alert(
+              "Please make sure you've copied a YouTube URL and try again."
+            );
+          }
         }
       }
 
-      // Handle click/touch
+      // Handle both click and touch events
       pasteButton.addEventListener("click", handlePaste);
       pasteButton.addEventListener("touchend", (e) => {
-        e.preventDefault();
+        e.preventDefault(); // Prevent double-tap zoom
         handlePaste();
       });
-
-      // Initialize player as soon as possible
-      initializePlayer();
-
-      // 2) Called by the IFrame API once its script loads:
-      function onYouTubeIframeAPIReady() {
-        ytPlayer = new YT.Player("player", {
-          playerVars: {
-            autoplay: 1,
-            playsinline: 1,
-            modestbranding: 1,
-            rel: 0,
-            origin: location.origin,
-            host: "https://www.youtube.com",
-          },
-          events: {
-            onReady: onPlayerReady,
-            onStateChange: onPlayerStateChange,
-            onError: (e) => {
-              console.error("YouTube Player Error", e);
-              // If there's an error, try reinitializing the player
-              if (e.data === 150 || e.data === 101) {
-                initializePlayer();
-              }
-            },
-          },
-        });
-      }
-
-      function onPlayerReady(event) {
-        // If we had a pending video ID, load it now
-        if (pendingVideoId) {
-          event.target.loadVideoById(pendingVideoId);
-          pendingVideoId = null;
-        }
-      }
-
-      // 3) Example event handler: logs play/pause; your normal account history will fire
-      function onPlayerStateChange(event) {
-        const states = {
-          [YT.PlayerState.PLAYING]: "PLAYING",
-          [YT.PlayerState.PAUSED]: "PAUSED",
-          [YT.PlayerState.ENDED]: "ENDED",
-        };
-        console.log("YouTube iframe state:", states[event.data] || event.data);
-      }
     </script>
   </body>
 </html>
